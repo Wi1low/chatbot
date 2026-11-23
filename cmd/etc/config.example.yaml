@@ -1,0 +1,98 @@
+# Full reference of every configuration key, with defaults in comments.
+# Copy sections into config.dev.yaml / config.prod.yaml; the loader already
+# seeds all of these as defaults (internal/config/load.go setDefaults), so a
+# config file only needs to state overrides.
+#
+# Override precedence (lowest → highest):
+#   built-in defaults < config.<APP_ENV>.yaml < .env < APP_* environment
+# Environment key pattern: APP_<SECTION>_<KEY-UPPER-UNDERSCORED>
+# e.g. database.conn-max-lifetime → APP_DATABASE_CONN_MAX_LIFETIME
+
+app:
+  name: chatbot
+  version: 0.0.1
+
+server:
+  addr: ":8080"
+  mode: "dev"            # dev | test | prod
+  read-timeout: 5s
+  write-timeout: 10s
+  shutdown-timeout: 10s  # graceful shutdown budget
+
+database:
+  enabled: false
+  driver: mysql          # add dialector cases in internal/module/database for postgres/sqlite
+  dsn: "user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
+  dbname: dbname         # label on gorm prometheus metrics
+  prometheus: true       # export dbstats gauges when metrics are enabled
+  max-open-conns: 100
+  max-idle-conns: 10
+  conn-max-lifetime: 1h
+  conn-max-idle-time: 30m
+  log-level: "warn"      # silent | error | warn | info
+  slow-threshold: 200ms
+  table-prefix: ""
+  singular-table: true
+  prepare-stmt: true     # cache prepared statements
+  skip-default-tx: false # drop gorm's per-write implicit transaction
+
+redis:
+  enabled: false
+  addr: "127.0.0.1:6379"
+  password: ""
+  db: 0
+  pool-size: 100
+  min-idle-conns: 10
+  max-idle-conns: 100
+  idle-timeout: 10m
+  dial-timeout: 5s
+  read-timeout: 3s
+  write-timeout: 3s
+  max-retries: 3
+  # master-name: mymaster        # sentinel: switch to goredis.NewFailoverClient
+  # sentinel-addrs:              #   in internal/module/redis
+  #   - "127.0.0.1:26379"
+  # cluster-mode: false          # switch to goredis.NewClusterClient
+
+jwt:
+  signing-key: ""        # REQUIRED for auth: inject APP_JWT_SIGNING_KEY
+  issuer: "chatbot"
+  expire-duration: 24h
+  buffer-time: 30m       # refresh window (application-level)
+  signing-method: "HS256" # HS256/384/512 or RS256/384/512
+  # private-key-path: /etc/app/jwt.pem  # RS* only
+  # public-key-path: /etc/app/jwt.pub   # RS* only
+
+cors:
+  enabled: true
+  allow-origins: ["*"]         # lock down when allow-credentials: true
+  allow-methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+  allow-headers: ["Origin", "Content-Length", "Content-Type", "Authorization", "X-Requested-With"]
+  expose-headers: ["Content-Length", "X-Total-Count"]
+  allow-credentials: false
+  max-age: 12h
+
+prometheus:
+  enabled: true
+  port: 9091                   # admin port; never the app port
+  path: "/metrics"             # the ONLY metrics endpoint in this template
+  namespace: "chatbot" # prefix for gin request metrics
+
+swagger:
+  enabled: true
+  path: "/swagger/*any"        # serve at /swagger/index.html
+
+# log: the zap encoder is chosen by server.mode (dev console, prod JSON +
+# rotating file under ./logs). This section is reserved for future per-key
+# tuning; the schema already exists in internal/config/logger.go.
+# log:
+#   level: "info"
+#   encoding: "json"
+#   output-paths: ["stdout", "./logs/app.log"]
+#   enable-rotate: true
+#   rotate-config:
+#     filename: "./logs/app.log"
+#     max-size: 100
+#     max-backups: 5
+#     max-age: 30
+#     compress: true
